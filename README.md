@@ -15,9 +15,9 @@ LMMS 2 candidate, written in Rust. This is not currently endorsed by the LMMS Pr
       * [ ] XML MMPZ (Qt Zlib) format
       * [ ] Non-XML format? (see above)
 * Frontends
-  * [ ] Renderer
+  * [ ] Exporter
     * Will use core to render a project file headless
-  * GUI
+  * [ ] GUI
     * Long-term goal, not a priority to focus on getting a stable/maintainable core
 
 ## License note
