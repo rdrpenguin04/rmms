@@ -1,0 +1,9 @@
+[package]
+name = "lmms2-core"
+version = "0.1.0"
+authors = ["Ray Redondo <rdredondo@lcdev.xyz>"]
+
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+categories.workspace = true
