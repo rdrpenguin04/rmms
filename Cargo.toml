@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "exporter"]
+members = ["core", "exporter", "gui"]
 resolver = "2"
 
 [workspace.package]
@@ -7,3 +7,6 @@ edition = "2021"
 repository = "https://github.com/rdrpenguin04/lmms2"
 license = "GPL-3.0-or-later"
 categories = ["multimedia::audio"]
+
+[workspace.dependencies]
+cpal = "0.14"
