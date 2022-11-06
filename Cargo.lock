@@ -281,6 +281,9 @@ dependencies = [
 [[package]]
 name = "lmms2-exporter"
 version = "0.1.0"
+dependencies = [
+ "lmms2-core",
+]
 
 [[package]]
 name = "lock_api"

@@ -10,3 +10,4 @@ categories = ["multimedia::audio"]
 
 [workspace.dependencies]
 cpal = "0.14"
+rand = "0.8"

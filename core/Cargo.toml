@@ -3,12 +3,13 @@ name = "lmms2-core"
 version = "0.1.0"
 authors = ["Ray Redondo <rdredondo@lcdev.xyz>"]
 
-features = ["cpal"]
-
 edition.workspace = true
 repository.workspace = true
 license.workspace = true
 categories.workspace = true
+
+[features]
+audio_startup = ["cpal"]
 
 [dependencies]
 cpal = { workspace = true, optional = true }
