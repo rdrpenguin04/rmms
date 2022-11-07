@@ -10,3 +10,4 @@ categories.workspace = true
 
 [dependencies]
 lmms2-core = { path = "../core" }
+clap = { workspace = true, features = ["derive"] }

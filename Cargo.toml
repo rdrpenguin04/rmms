@@ -9,5 +9,7 @@ license = "GPL-3.0-or-later"
 categories = ["multimedia::audio"]
 
 [workspace.dependencies]
+clap = "4"
 cpal = "0.14"
+quick-xml = "0.26"
 rand = "0.8"

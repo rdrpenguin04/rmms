@@ -13,3 +13,4 @@ audio_startup = ["cpal"]
 
 [dependencies]
 cpal = { workspace = true, optional = true }
+quick-xml = { workspace = true }
