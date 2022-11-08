@@ -64,6 +64,16 @@ impl ProjectFile {
     }
 }
 
+macro_rules! assert_whitespace {
+    ($x:expr) => {
+        for c in $x.as_ref() {
+            if !char::from(*c).is_whitespace() {
+                todo!()
+            }
+        }
+    };
+}
+
 impl ProjectFile {
     /// # Errors
     /// This method returns an error if the underlying stream breaks or if the file is invalid
@@ -156,13 +166,7 @@ impl ProjectFile {
                         ))
                     }
                 },
-                Ok(Event::Text(e)) => {
-                    for c in e.as_ref() {
-                        if !char::from(*c).is_whitespace() {
-                            todo!()
-                        }
-                    }
-                }
+                Ok(Event::Text(e)) => assert_whitespace!(e),
                 Ok(Event::Eof) => {
                     return Err(io::Error::new(
                         io::ErrorKind::UnexpectedEof,
@@ -222,13 +226,7 @@ impl ProjectFile {
                                                             ))
                                                         }
                                                     },
-                                                    Ok(Event::Text(e)) => {
-                                                        for c in e.as_ref() {
-                                                            if !char::from(*c).is_whitespace() {
-                                                                todo!()
-                                                            }
-                                                        }
-                                                    }
+                                                    Ok(Event::Text(e)) => assert_whitespace!(e),
                                                     Ok(Event::Eof) => {
                                                         return Err(io::Error::new(
                                                             io::ErrorKind::UnexpectedEof,
@@ -256,13 +254,7 @@ impl ProjectFile {
                                                 ))
                                             }
                                         },
-                                        Ok(Event::Text(e)) => {
-                                            for c in e.as_ref() {
-                                                if !char::from(*c).is_whitespace() {
-                                                    todo!()
-                                                }
-                                            }
-                                        }
+                                        Ok(Event::Text(e)) => assert_whitespace!(e),
                                         Ok(Event::Eof) => {
                                             return Err(io::Error::new(
                                                 io::ErrorKind::UnexpectedEof,
@@ -290,13 +282,7 @@ impl ProjectFile {
                                     ))
                                 }
                             },
-                            Ok(Event::Text(e)) => {
-                                for c in e.as_ref() {
-                                    if !char::from(*c).is_whitespace() {
-                                        todo!()
-                                    }
-                                }
-                            }
+                            Ok(Event::Text(e)) => assert_whitespace!(e),
                             Ok(Event::Eof) => {
                                 return Err(io::Error::new(
                                     io::ErrorKind::UnexpectedEof,
@@ -310,13 +296,7 @@ impl ProjectFile {
                     },
                     _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected tag")),
                 },
-                Ok(Event::Text(e)) => {
-                    for c in e.as_ref() {
-                        if !char::from(*c).is_whitespace() {
-                            todo!()
-                        }
-                    }
-                }
+                Ok(Event::Text(e)) => assert_whitespace!(e),
                 Ok(Event::Comment(_) | Event::Decl(_) | Event::DocType(_) | Event::CData(_)) => {}
                 Ok(Event::PI(_)) => {
                     return Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected PI"))
