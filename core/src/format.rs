@@ -20,7 +20,6 @@ pub enum TrackBody {
     HiddenAutomation(), // Global automation track. TODO: Un-hide
 }
 
-#[allow(dead_code)] // TODO: Don't have dead code
 #[derive(Debug)]
 pub struct Track {
     name: String,
@@ -139,10 +138,17 @@ impl ProjectFile {
         Ok(head)
     }
 
-    #[allow(clippy::needless_pass_by_value)] // TODO: Re-evaluate
+    fn load_instrument_track(
+        _reader: &mut Reader<impl BufRead + Seek>,
+        _e: &BytesStart,
+        _is_empty: bool,
+    ) -> io::Result<InstrumentTrack> {
+        todo!()
+    }
+
     fn load_track(
         reader: &mut Reader<impl BufRead + Seek>,
-        e: BytesStart,
+        e: &BytesStart,
         is_empty: bool,
     ) -> io::Result<Track> {
         let mut buf = Vec::new();
@@ -181,6 +187,15 @@ impl ProjectFile {
         if !is_empty {
             loop {
                 match reader.read_event_into(&mut buf) {
+                    Ok(Event::Start(e)) => match e.name().as_ref() {
+                        b"instrumenttrack" => match &mut track.body {
+                            TrackBody::Instrument(x) => {
+                                *x = Some(Self::load_instrument_track(reader, &e, false)?);
+                            }
+                            _ => Err(invalid_data!("instrumenttrack tag in non-instrument track"))?,
+                        },
+                        x => todo!("{}", std::str::from_utf8(x).unwrap()),
+                    },
                     Ok(Event::End(e)) => match e.name().as_ref() {
                         b"track" => break,
                         _ => Err(invalid_data!("unexpected end tag"))?,
@@ -226,7 +241,7 @@ impl ProjectFile {
                                                             b"track" => result.tracks.push(
                                                                 Self::load_track(
                                                                     &mut reader,
-                                                                    e,
+                                                                    &e,
                                                                     false,
                                                                 )?,
                                                             ),
