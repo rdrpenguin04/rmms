@@ -1,5 +1,11 @@
+use std::f32::consts::E;
 use std::io::{self, BufRead, Seek};
 use std::str::FromStr;
+
+use quick_xml::{
+    events::{BytesStart, Event},
+    Error, Reader,
+};
 
 #[derive(Debug)]
 pub struct InstrumentTrack {}
@@ -31,6 +37,17 @@ pub struct ProjectHead {
     master_pitch: i8,
 }
 
+impl Default for ProjectHead {
+    fn default() -> Self {
+        Self {
+            bpm: 140.0,
+            vol: 100.0,
+            time_sig: (4, 4),
+            master_pitch: 0,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ProjectFile {
     head: ProjectHead,
@@ -40,12 +57,7 @@ pub struct ProjectFile {
 impl ProjectFile {
     pub fn empty() -> Self {
         ProjectFile {
-            head: ProjectHead {
-                bpm: 140.0,
-                vol: 100.0,
-                time_sig: (4, 4),
-                master_pitch: 0,
-            },
+            head: ProjectHead::default(),
             tracks: Vec::new(),
         }
     }
@@ -66,9 +78,99 @@ impl ProjectFile {
         }
     }
 
-    pub fn load_xml(file: impl BufRead + Seek) -> io::Result<Self> {
-        use quick_xml::{events::Event, Error, Reader};
+    fn load_head(e: BytesStart) -> io::Result<ProjectHead> {
+        let mut head = ProjectHead::default();
+        for attrib in e.attributes() {
+            let Ok(attrib) = attrib else { return Err(io::Error::new(io::ErrorKind::InvalidData, "bad attribute")) };
+            match attrib.key.as_ref() {
+                b"bpm" => {
+                    head.bpm = f32::from_str(
+                        &attrib
+                            .unescape_value()
+                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
+                    )
+                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                }
+                b"mastervol" => {
+                    head.vol = f32::from_str(
+                        &attrib
+                            .unescape_value()
+                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
+                    )
+                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                }
+                b"timesig_denominator" => {
+                    head.time_sig.1 = u8::from_str(
+                        &attrib
+                            .unescape_value()
+                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
+                    )
+                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                }
+                b"timesig_numerator" => {
+                    head.time_sig.0 = u8::from_str(
+                        &attrib
+                            .unescape_value()
+                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
+                    )
+                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                }
+                b"masterpitch" => {
+                    head.master_pitch = i8::from_str(
+                        &attrib
+                            .unescape_value()
+                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
+                    )
+                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                }
+                x => todo!("{}", std::str::from_utf8(x).unwrap()),
+            }
+        }
+        Ok(head)
+    }
 
+    fn load_track(reader: &mut Reader<impl BufRead + Seek>, e: BytesStart) -> io::Result<Track> {
+        let mut buf = Vec::new();
+
+        let track = Track {
+            name: String::new(),
+            solo: false,
+            mute: false,
+            body: TrackBody::Unused3, // Temp
+        };
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::End(e)) => match e.name().as_ref() {
+                    b"track" => break,
+                    _ => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "unexpected end tag",
+                        ))
+                    }
+                },
+                Ok(Event::Text(e)) => {
+                    for c in e.as_ref() {
+                        if !char::from(*c).is_whitespace() {
+                            todo!()
+                        }
+                    }
+                }
+                Ok(Event::Eof) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "unexpected EOF",
+                    ))
+                }
+                Ok(x) => todo!("{:?}", x),
+                Err(Error::Io(x)) => return Err(x),
+                Err(x) => return Err(io::Error::new(io::ErrorKind::InvalidData, x)),
+            }
+        }
+        Ok(track)
+    }
+
+    pub fn load_xml(file: impl BufRead + Seek) -> io::Result<Self> {
         let mut result = ProjectFile::empty();
         let mut reader = Reader::from_reader(file);
         let mut buf = Vec::new();
@@ -80,87 +182,95 @@ impl ProjectFile {
                         match reader.read_event_into(&mut buf) {
                             Ok(Event::Empty(e)) => match e.name().as_ref() {
                                 b"head" => {
-                                    for attrib in e.attributes() {
-                                        let Ok(attrib) = attrib else { return Err(io::Error::new(io::ErrorKind::InvalidData, "bad attribute")) };
-                                        match attrib.key.as_ref() {
-                                            b"bpm" => {
-                                                result.head.bpm = f32::from_str(
-                                                    &attrib.unescape_value().map_err(|x| {
-                                                        io::Error::new(
-                                                            io::ErrorKind::InvalidData,
-                                                            x,
-                                                        )
-                                                    })?,
-                                                )
-                                                .map_err(|x| {
-                                                    io::Error::new(io::ErrorKind::InvalidData, x)
-                                                })?;
-                                            }
-                                            b"mastervol" => {
-                                                result.head.vol = f32::from_str(
-                                                    &attrib.unescape_value().map_err(|x| {
-                                                        io::Error::new(
-                                                            io::ErrorKind::InvalidData,
-                                                            x,
-                                                        )
-                                                    })?,
-                                                )
-                                                .map_err(|x| {
-                                                    io::Error::new(io::ErrorKind::InvalidData, x)
-                                                })?;
-                                            }
-                                            b"timesig_denominator" => {
-                                                result.head.time_sig.1 = u8::from_str(
-                                                    &attrib.unescape_value().map_err(|x| {
-                                                        io::Error::new(
-                                                            io::ErrorKind::InvalidData,
-                                                            x,
-                                                        )
-                                                    })?,
-                                                )
-                                                .map_err(|x| {
-                                                    io::Error::new(io::ErrorKind::InvalidData, x)
-                                                })?;
-                                            }
-                                            b"timesig_numerator" => {
-                                                result.head.time_sig.0 = u8::from_str(
-                                                    &attrib.unescape_value().map_err(|x| {
-                                                        io::Error::new(
-                                                            io::ErrorKind::InvalidData,
-                                                            x,
-                                                        )
-                                                    })?,
-                                                )
-                                                .map_err(|x| {
-                                                    io::Error::new(io::ErrorKind::InvalidData, x)
-                                                })?;
-                                            }
-                                            b"masterpitch" => {
-                                                result.head.master_pitch = i8::from_str(
-                                                    &attrib.unescape_value().map_err(|x| {
-                                                        io::Error::new(
-                                                            io::ErrorKind::InvalidData,
-                                                            x,
-                                                        )
-                                                    })?,
-                                                )
-                                                .map_err(|x| {
-                                                    io::Error::new(io::ErrorKind::InvalidData, x)
-                                                })?;
-                                            }
-                                            x => todo!("{}", std::str::from_utf8(x).unwrap()),
-                                        }
-                                    }
+                                    result.head = Self::load_head(e)?;
                                 }
                                 x => todo!("{}", std::str::from_utf8(x).unwrap()),
                             },
-                            Ok(Event::Text(e)) => {
-                                for c in e.as_ref() {
-                                    if !char::from(*c).is_whitespace() {
-                                        todo!()
+                            Ok(Event::Start(e)) => match e.name().as_ref() {
+                                b"song" => loop {
+                                    match reader.read_event_into(&mut buf) {
+                                        Ok(Event::Start(e)) => match e.name().as_ref() {
+                                            b"trackcontainer" => loop {
+                                                match reader.read_event_into(&mut buf) {
+                                                    Ok(Event::Start(e)) => {
+                                                        match e.name().as_ref() {
+                                                            b"track" => result.tracks.push(
+                                                                Self::load_track(&mut reader, e)?,
+                                                            ),
+                                                            x => todo!(
+                                                                "{}",
+                                                                std::str::from_utf8(x).unwrap()
+                                                            ),
+                                                        }
+                                                    }
+                                                    Ok(Event::End(e)) => match e.name().as_ref() {
+                                                        b"trackcontainer" => break,
+                                                        _ => {
+                                                            return Err(io::Error::new(
+                                                                io::ErrorKind::InvalidData,
+                                                                "unexpected end tag",
+                                                            ))
+                                                        }
+                                                    },
+                                                    Ok(Event::Text(e)) => {
+                                                        for c in e.as_ref() {
+                                                            if !char::from(*c).is_whitespace() {
+                                                                todo!()
+                                                            }
+                                                        }
+                                                    }
+                                                    Ok(Event::Eof) => {
+                                                        return Err(io::Error::new(
+                                                            io::ErrorKind::UnexpectedEof,
+                                                            "unexpected EOF",
+                                                        ))
+                                                    }
+                                                    Ok(x) => todo!("{:?}", x),
+                                                    Err(Error::Io(x)) => return Err(x),
+                                                    Err(x) => {
+                                                        return Err(io::Error::new(
+                                                            io::ErrorKind::InvalidData,
+                                                            x,
+                                                        ))
+                                                    }
+                                                }
+                                            },
+                                            x => todo!("{}", std::str::from_utf8(x).unwrap()),
+                                        },
+                                        Ok(Event::End(e)) => match e.name().as_ref() {
+                                            b"song" => break,
+                                            _ => {
+                                                return Err(io::Error::new(
+                                                    io::ErrorKind::InvalidData,
+                                                    "unexpected end tag",
+                                                ))
+                                            }
+                                        },
+                                        Ok(Event::Text(e)) => {
+                                            for c in e.as_ref() {
+                                                if !char::from(*c).is_whitespace() {
+                                                    todo!()
+                                                }
+                                            }
+                                        }
+                                        Ok(Event::Eof) => {
+                                            return Err(io::Error::new(
+                                                io::ErrorKind::UnexpectedEof,
+                                                "unexpected EOF",
+                                            ))
+                                        }
+                                        Ok(x) => todo!("{:?}", x),
+                                        Err(Error::Io(x)) => return Err(x),
+                                        Err(x) => {
+                                            return Err(io::Error::new(
+                                                io::ErrorKind::InvalidData,
+                                                x,
+                                            ))
+                                        }
                                     }
-                                }
-                            }
+                                },
+                                x => todo!("{}", std::str::from_utf8(x).unwrap()),
+                            },
                             Ok(Event::End(e)) => match e.name().as_ref() {
                                 b"lmms-project" => break,
                                 _ => {
@@ -170,6 +280,13 @@ impl ProjectFile {
                                     ))
                                 }
                             },
+                            Ok(Event::Text(e)) => {
+                                for c in e.as_ref() {
+                                    if !char::from(*c).is_whitespace() {
+                                        todo!()
+                                    }
+                                }
+                            }
                             Ok(Event::Eof) => {
                                 return Err(io::Error::new(
                                     io::ErrorKind::UnexpectedEof,
