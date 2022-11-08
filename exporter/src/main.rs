@@ -15,6 +15,6 @@ struct Args {
 fn main() -> io::Result<()> {
     let args = Args::parse();
     let file = ProjectFile::load(BufReader::new(File::open(args.filename)?))?;
-    println!("{:?}", file);
+    println!("{file:?}");
     Ok(())
 }

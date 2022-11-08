@@ -1,4 +1,3 @@
-use std::f32::consts::E;
 use std::io::{self, BufRead, Seek};
 use std::str::FromStr;
 
@@ -21,6 +20,7 @@ pub enum TrackBody {
     HiddenAutomation(), // Global automation track. TODO: Un-hide
 }
 
+#[allow(dead_code)] // TODO: Don't have dead code
 #[derive(Debug)]
 pub struct Track {
     name: String,
@@ -55,8 +55,9 @@ pub struct ProjectFile {
 }
 
 impl ProjectFile {
+    #[must_use]
     pub fn empty() -> Self {
-        ProjectFile {
+        Self {
             head: ProjectHead::default(),
             tracks: Vec::new(),
         }
@@ -64,6 +65,11 @@ impl ProjectFile {
 }
 
 impl ProjectFile {
+    /// # Errors
+    /// This method returns an error if the underlying stream breaks or if the file is invalid
+    ///
+    /// # Panics
+    /// This method panics if the file is unsupported. TODO: Don't panic.
     pub fn load(mut file: impl BufRead + Seek) -> io::Result<Self> {
         let mut first_two = [0; 2];
         file.read_exact(&mut first_two)?;
@@ -78,7 +84,7 @@ impl ProjectFile {
         }
     }
 
-    fn load_head(e: BytesStart) -> io::Result<ProjectHead> {
+    fn load_head(e: &BytesStart) -> io::Result<ProjectHead> {
         let mut head = ProjectHead::default();
         for attrib in e.attributes() {
             let Ok(attrib) = attrib else { return Err(io::Error::new(io::ErrorKind::InvalidData, "bad attribute")) };
@@ -129,7 +135,8 @@ impl ProjectFile {
         Ok(head)
     }
 
-    fn load_track(reader: &mut Reader<impl BufRead + Seek>, e: BytesStart) -> io::Result<Track> {
+    #[allow(clippy::needless_pass_by_value)] // TODO: Re-evaluate
+    fn load_track(reader: &mut Reader<impl BufRead + Seek>, _e: BytesStart) -> io::Result<Track> {
         let mut buf = Vec::new();
 
         let track = Track {
@@ -170,8 +177,11 @@ impl ProjectFile {
         Ok(track)
     }
 
+    /// # Errors
+    /// This method returns an error if the underlying stream breaks or if the file is invalid
+    #[allow(clippy::missing_panics_doc, clippy::too_many_lines)] // TODO: improve this
     pub fn load_xml(file: impl BufRead + Seek) -> io::Result<Self> {
-        let mut result = ProjectFile::empty();
+        let mut result = Self::empty();
         let mut reader = Reader::from_reader(file);
         let mut buf = Vec::new();
 
@@ -182,7 +192,7 @@ impl ProjectFile {
                         match reader.read_event_into(&mut buf) {
                             Ok(Event::Empty(e)) => match e.name().as_ref() {
                                 b"head" => {
-                                    result.head = Self::load_head(e)?;
+                                    result.head = Self::load_head(&e)?;
                                 }
                                 x => todo!("{}", std::str::from_utf8(x).unwrap()),
                             },
