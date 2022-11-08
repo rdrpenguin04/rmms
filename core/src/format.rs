@@ -80,6 +80,15 @@ macro_rules! invalid_data {
     };
 }
 
+macro_rules! unexpected_eof {
+    () => {
+        Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "unexpected EOF",
+        ))?
+    };
+}
+
 impl ProjectFile {
     /// # Errors
     /// This method returns an error if the underlying stream breaks or if the file is invalid
@@ -144,12 +153,7 @@ impl ProjectFile {
                     _ => Err(invalid_data!("unexpected end tag"))?,
                 },
                 Ok(Event::Text(e)) => assert_whitespace!(e),
-                Ok(Event::Eof) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::UnexpectedEof,
-                        "unexpected EOF",
-                    ))
-                }
+                Ok(Event::Eof) => unexpected_eof!(),
                 Ok(x) => todo!("{:?}", x),
                 Err(Error::Io(x)) => return Err(x),
                 Err(x) => return Err(io::Error::new(io::ErrorKind::InvalidData, x)),
@@ -201,9 +205,7 @@ impl ProjectFile {
                                                         ))?,
                                                     },
                                                     Ok(Event::Text(e)) => assert_whitespace!(e),
-                                                    Ok(Event::Eof) => {
-                                                        Err(invalid_data!("unexpected EOF"))?;
-                                                    }
+                                                    Ok(Event::Eof) => unexpected_eof!(),
                                                     Ok(x) => todo!("{:?}", x),
                                                     Err(Error::Io(x)) => return Err(x),
                                                     Err(x) => Err(invalid_data!(x))?,
@@ -216,7 +218,7 @@ impl ProjectFile {
                                             _ => Err(invalid_data!("unexpected end tag"))?,
                                         },
                                         Ok(Event::Text(e)) => assert_whitespace!(e),
-                                        Ok(Event::Eof) => Err(invalid_data!("unexpected EOF"))?,
+                                        Ok(Event::Eof) => unexpected_eof!(),
                                         Ok(x) => todo!("{:?}", x),
                                         Err(Error::Io(x)) => return Err(x),
                                         Err(x) => Err(invalid_data!(x))?,
@@ -229,7 +231,7 @@ impl ProjectFile {
                                 _ => Err(invalid_data!("unexpected end tag"))?,
                             },
                             Ok(Event::Text(e)) => assert_whitespace!(e),
-                            Ok(Event::Eof) => Err(invalid_data!("unexpected EOF"))?,
+                            Ok(Event::Eof) => unexpected_eof!(),
                             Ok(x) => todo!("{:?}", x),
                             Err(Error::Io(x)) => return Err(x),
                             Err(x) => Err(invalid_data!(x))?,
