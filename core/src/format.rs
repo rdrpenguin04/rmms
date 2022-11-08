@@ -68,9 +68,15 @@ macro_rules! assert_whitespace {
     ($x:expr) => {
         for c in $x.as_ref() {
             if !char::from(*c).is_whitespace() {
-                todo!()
+                Err(invalid_data!("unexpected stray text"))?
             }
         }
+    };
+}
+
+macro_rules! invalid_data {
+    ($x:expr) => {
+        io::Error::new(io::ErrorKind::InvalidData, $x)
     };
 }
 
@@ -98,46 +104,22 @@ impl ProjectFile {
         let mut head = ProjectHead::default();
         for attrib in e.attributes() {
             let Ok(attrib) = attrib else { return Err(io::Error::new(io::ErrorKind::InvalidData, "bad attribute")) };
+            let value = attrib.unescape_value().map_err(|x| invalid_data!(x))?;
             match attrib.key.as_ref() {
                 b"bpm" => {
-                    head.bpm = f32::from_str(
-                        &attrib
-                            .unescape_value()
-                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
-                    )
-                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                    head.bpm = f32::from_str(&value).map_err(|x| invalid_data!(x))?;
                 }
                 b"mastervol" => {
-                    head.vol = f32::from_str(
-                        &attrib
-                            .unescape_value()
-                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
-                    )
-                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                    head.vol = f32::from_str(&value).map_err(|x| invalid_data!(x))?;
                 }
                 b"timesig_denominator" => {
-                    head.time_sig.1 = u8::from_str(
-                        &attrib
-                            .unescape_value()
-                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
-                    )
-                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                    head.time_sig.1 = u8::from_str(&value).map_err(|x| invalid_data!(x))?;
                 }
                 b"timesig_numerator" => {
-                    head.time_sig.0 = u8::from_str(
-                        &attrib
-                            .unescape_value()
-                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
-                    )
-                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                    head.time_sig.0 = u8::from_str(&value).map_err(|x| invalid_data!(x))?;
                 }
                 b"masterpitch" => {
-                    head.master_pitch = i8::from_str(
-                        &attrib
-                            .unescape_value()
-                            .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?,
-                    )
-                    .map_err(|x| io::Error::new(io::ErrorKind::InvalidData, x))?;
+                    head.master_pitch = i8::from_str(&value).map_err(|x| invalid_data!(x))?;
                 }
                 x => todo!("{}", std::str::from_utf8(x).unwrap()),
             }
@@ -159,12 +141,7 @@ impl ProjectFile {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::End(e)) => match e.name().as_ref() {
                     b"track" => break,
-                    _ => {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "unexpected end tag",
-                        ))
-                    }
+                    _ => Err(invalid_data!("unexpected end tag"))?,
                 },
                 Ok(Event::Text(e)) => assert_whitespace!(e),
                 Ok(Event::Eof) => {
@@ -183,7 +160,7 @@ impl ProjectFile {
 
     /// # Errors
     /// This method returns an error if the underlying stream breaks or if the file is invalid
-    #[allow(clippy::missing_panics_doc, clippy::too_many_lines)] // TODO: improve this
+    #[allow(clippy::missing_panics_doc)] // TODO: don't panic
     pub fn load_xml(file: impl BufRead + Seek) -> io::Result<Self> {
         let mut result = Self::empty();
         let mut reader = Reader::from_reader(file);
@@ -219,92 +196,54 @@ impl ProjectFile {
                                                     }
                                                     Ok(Event::End(e)) => match e.name().as_ref() {
                                                         b"trackcontainer" => break,
-                                                        _ => {
-                                                            return Err(io::Error::new(
-                                                                io::ErrorKind::InvalidData,
-                                                                "unexpected end tag",
-                                                            ))
-                                                        }
+                                                        _ => Err(invalid_data!(
+                                                            "unexpected end tag"
+                                                        ))?,
                                                     },
                                                     Ok(Event::Text(e)) => assert_whitespace!(e),
                                                     Ok(Event::Eof) => {
-                                                        return Err(io::Error::new(
-                                                            io::ErrorKind::UnexpectedEof,
-                                                            "unexpected EOF",
-                                                        ))
+                                                        Err(invalid_data!("unexpected EOF"))?;
                                                     }
                                                     Ok(x) => todo!("{:?}", x),
                                                     Err(Error::Io(x)) => return Err(x),
-                                                    Err(x) => {
-                                                        return Err(io::Error::new(
-                                                            io::ErrorKind::InvalidData,
-                                                            x,
-                                                        ))
-                                                    }
+                                                    Err(x) => Err(invalid_data!(x))?,
                                                 }
                                             },
                                             x => todo!("{}", std::str::from_utf8(x).unwrap()),
                                         },
                                         Ok(Event::End(e)) => match e.name().as_ref() {
                                             b"song" => break,
-                                            _ => {
-                                                return Err(io::Error::new(
-                                                    io::ErrorKind::InvalidData,
-                                                    "unexpected end tag",
-                                                ))
-                                            }
+                                            _ => Err(invalid_data!("unexpected end tag"))?,
                                         },
                                         Ok(Event::Text(e)) => assert_whitespace!(e),
-                                        Ok(Event::Eof) => {
-                                            return Err(io::Error::new(
-                                                io::ErrorKind::UnexpectedEof,
-                                                "unexpected EOF",
-                                            ))
-                                        }
+                                        Ok(Event::Eof) => Err(invalid_data!("unexpected EOF"))?,
                                         Ok(x) => todo!("{:?}", x),
                                         Err(Error::Io(x)) => return Err(x),
-                                        Err(x) => {
-                                            return Err(io::Error::new(
-                                                io::ErrorKind::InvalidData,
-                                                x,
-                                            ))
-                                        }
+                                        Err(x) => Err(invalid_data!(x))?,
                                     }
                                 },
                                 x => todo!("{}", std::str::from_utf8(x).unwrap()),
                             },
                             Ok(Event::End(e)) => match e.name().as_ref() {
                                 b"lmms-project" => break,
-                                _ => {
-                                    return Err(io::Error::new(
-                                        io::ErrorKind::InvalidData,
-                                        "unexpected end tag",
-                                    ))
-                                }
+                                _ => Err(invalid_data!("unexpected end tag"))?,
                             },
                             Ok(Event::Text(e)) => assert_whitespace!(e),
-                            Ok(Event::Eof) => {
-                                return Err(io::Error::new(
-                                    io::ErrorKind::UnexpectedEof,
-                                    "unexpected EOF",
-                                ))
-                            }
+                            Ok(Event::Eof) => Err(invalid_data!("unexpected EOF"))?,
                             Ok(x) => todo!("{:?}", x),
                             Err(Error::Io(x)) => return Err(x),
-                            Err(x) => return Err(io::Error::new(io::ErrorKind::InvalidData, x)),
+                            Err(x) => Err(invalid_data!(x))?,
                         }
                     },
-                    _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected tag")),
+                    _ => Err(invalid_data!("unexpected tag"))?,
                 },
                 Ok(Event::Text(e)) => assert_whitespace!(e),
                 Ok(Event::Comment(_) | Event::Decl(_) | Event::DocType(_) | Event::CData(_)) => {}
-                Ok(Event::PI(_)) => {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected PI"))
-                }
+                Ok(Event::PI(_)) => Err(invalid_data!("unexpected PI"))?,
                 Ok(Event::Eof) => break,
                 Ok(x) => todo!("{:?}", x),
                 Err(Error::Io(x)) => return Err(x),
-                Err(x) => return Err(io::Error::new(io::ErrorKind::InvalidData, x)),
+                Err(x) => Err(invalid_data!(x))?,
             }
         }
 
