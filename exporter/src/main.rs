@@ -4,9 +4,9 @@ use std::{
 };
 
 use clap::Parser;
-use lmms2_core::format::ProjectFile;
+use rmms_core::format::ProjectFile;
 
-/// Standalone Exporter for LMMS projects
+/// Standalone Exporter for RMMS projects
 #[derive(Parser, Debug)]
 struct Args {
     filename: String,

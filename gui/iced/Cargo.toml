@@ -1,5 +1,5 @@
 [package]
-name = "rmms-exporter"
+name = "rmms-iced"
 version = "0.1.0"
 authors = ["Ray Redondo <rdredondo@lcdev.xyz>"]
 
@@ -9,5 +9,4 @@ license.workspace = true
 categories.workspace = true
 
 [dependencies]
-rmms-core = { path = "../core" }
-clap = { workspace = true, features = ["derive"] }
+rmms-core = { path = "../../core", features = ["cpal"] }

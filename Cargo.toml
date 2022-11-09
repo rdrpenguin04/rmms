@@ -1,10 +1,10 @@
 [workspace]
-members = ["core", "exporter", "gui"]
+members = ["core", "exporter", "gui/egui", "gui/iced"]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
-repository = "https://github.com/rdrpenguin04/lmms2"
+repository = "https://github.com/rdrpenguin04/rmms"
 license = "GPL-3.0-or-later"
 categories = ["multimedia::audio"]
 

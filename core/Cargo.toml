@@ -1,5 +1,5 @@
 [package]
-name = "lmms2-core"
+name = "rmms-core"
 version = "0.1.0"
 authors = ["Ray Redondo <rdredondo@lcdev.xyz>"]
 

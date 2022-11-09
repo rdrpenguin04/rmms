@@ -328,29 +328,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lmms2"
-version = "0.1.0"
-dependencies = [
- "lmms2-core",
-]
-
-[[package]]
-name = "lmms2-core"
-version = "0.1.0"
-dependencies = [
- "cpal",
- "quick-xml",
-]
-
-[[package]]
-name = "lmms2-exporter"
-version = "0.1.0"
-dependencies = [
- "clap",
- "lmms2-core",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -698,6 +675,36 @@ name = "regex-syntax"
 version = "0.6.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
+
+[[package]]
+name = "rmms-core"
+version = "0.1.0"
+dependencies = [
+ "cpal",
+ "quick-xml",
+]
+
+[[package]]
+name = "rmms-egui"
+version = "0.1.0"
+dependencies = [
+ "rmms-core",
+]
+
+[[package]]
+name = "rmms-exporter"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "rmms-core",
+]
+
+[[package]]
+name = "rmms-iced"
+version = "0.1.0"
+dependencies = [
+ "rmms-core",
+]
 
 [[package]]
 name = "rustc-hash"
