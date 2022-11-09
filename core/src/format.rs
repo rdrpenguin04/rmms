@@ -89,12 +89,12 @@ macro_rules! unexpected_eof {
 }
 
 /// Helper function to convert strings to different types
-fn convert<T>(str: &str) -> T
+fn convert<T>(str: &str) -> io::Result<T>
 where
     T: FromStr + Default,
 {
-    // TODO: Should we wrap the return type in result enum?
-    T::from_str(str).unwrap_or_default()
+    T::from_str(str)
+        .map_err(|x| invalid_data!(x))
 }
 
 impl ProjectFile {
@@ -124,11 +124,11 @@ impl ProjectFile {
             let Ok(attr) = attr else { Err(invalid_data!("bad attribute"))? };
             let value = attr.unescape_value().map_err(|x| invalid_data!(x))?;
             match attr.key.as_ref() {
-                b"bpm" => head.bpm = convert(&value),
-                b"mastervol" => head.vol = convert(&value),
-                b"masterpitch" => head.master_pitch = convert(&value),
-                b"timesig_numerator" => head.time_sig.0 = convert(&value),
-                b"timesig_denominator" => head.time_sig.1 = convert(&value),
+                b"bpm" => head.bpm = convert(&value)?,
+                b"mastervol" => head.vol = convert(&value)?,
+                b"masterpitch" => head.master_pitch = convert(&value)?,
+                b"timesig_numerator" => head.time_sig.0 = convert(&value)?,
+                b"timesig_denominator" => head.time_sig.1 = convert(&value)?,
                 x => todo!("{}", std::str::from_utf8(x).unwrap()),
             }
         }
