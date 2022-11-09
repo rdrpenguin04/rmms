@@ -88,6 +88,15 @@ macro_rules! unexpected_eof {
     };
 }
 
+/// Helper function to convert strings to different types
+fn convert<T>(str: &str) -> T
+where
+    T: FromStr + Default,
+{
+    // TODO: Should we wrap the return type in result enum?
+    T::from_str(str).unwrap_or_default()
+}
+
 impl ProjectFile {
     /// # Errors
     /// This method returns an error if the underlying stream breaks or if the file is invalid
@@ -110,25 +119,16 @@ impl ProjectFile {
 
     fn load_head(e: &BytesStart, is_empty: bool) -> io::Result<ProjectHead> {
         let mut head = ProjectHead::default();
+
         for attr in e.attributes() {
             let Ok(attr) = attr else { Err(invalid_data!("bad attribute"))? };
             let value = attr.unescape_value().map_err(|x| invalid_data!(x))?;
             match attr.key.as_ref() {
-                b"bpm" => {
-                    head.bpm = f32::from_str(&value).map_err(|x| invalid_data!(x))?;
-                }
-                b"mastervol" => {
-                    head.vol = f32::from_str(&value).map_err(|x| invalid_data!(x))?;
-                }
-                b"timesig_denominator" => {
-                    head.time_sig.1 = u8::from_str(&value).map_err(|x| invalid_data!(x))?;
-                }
-                b"timesig_numerator" => {
-                    head.time_sig.0 = u8::from_str(&value).map_err(|x| invalid_data!(x))?;
-                }
-                b"masterpitch" => {
-                    head.master_pitch = i8::from_str(&value).map_err(|x| invalid_data!(x))?;
-                }
+                b"bpm" => head.bpm = convert(&value),
+                b"mastervol" => head.vol = convert(&value),
+                b"masterpitch" => head.master_pitch = convert(&value),
+                b"timesig_numerator" => head.time_sig.0 = convert(&value),
+                b"timesig_denominator" => head.time_sig.1 = convert(&value),
                 x => todo!("{}", std::str::from_utf8(x).unwrap()),
             }
         }
