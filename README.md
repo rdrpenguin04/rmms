@@ -1,5 +1,5 @@
-# lmms2
-LMMS 2 candidate, written in Rust. This is not currently endorsed by the LMMS Project.
+# RMMS (Robust Music-Making Studio)
+LMMS successor candidate, written in Rust. This is not currently endorsed by the LMMS Project.
 
 ## Roadmap
 * Core
