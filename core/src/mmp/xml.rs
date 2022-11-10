@@ -1,54 +1,67 @@
-use quick_xml::events::attributes::{Attributes, Attribute};
 use quick_xml::{self, Reader, events::Event};
 use std::borrow::Cow;
-use std::fs::File;
-use std::io::{BufRead, Seek, BufReader};
+use std::io::{BufRead, Seek, self};
 use std::rc::{Weak, Rc};
 use std::cell::RefCell;
 use std::str::{from_utf8, FromStr};
 
-type ParentNode = Weak<RefCell<Node>>;
-type ChildNode= Rc<RefCell<Node>>;
+pub type ParentNode = Weak<RefCell<Node>>;
+pub type ChildNode= Rc<RefCell<Node>>;
+use thiserror::Error;
 
-// TODO: Use thiserror
-#[derive(Debug)]
-pub enum XMLError {
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum XMLError{
+    #[error("Invalid XML")]
     Invalid,
-    AttrNotPresent,
-    TagNotPresent,
-    // FailedCoersion(DynError),
+
+    #[error("Could not find attribute \"{0}\"")]
+    AttrNotPresent(String),
+
+    #[error("Could not find tag \"{0}\"")]
+    TagNotPresent(String),
+
+    #[error("{0}")]
+    IoError(#[from] io::Error),
 }
 
-type DynError = dyn std::error::Error + Send + Sync + 'static;
-
 /// Helper function to convert strings to different types
-fn convert<T>(str: &str) -> T
+fn convert<T>(str: &str) -> Result<T, io::Error>
 where
     T: FromStr + Default, 
-    // <T as FromStr>::Err: std::error::Error + Send + Sync + 'static
+    <T as FromStr>::Err: std::error::Error + Send + Sync + 'static
+    // TODO: Refactor
 {
-    T::from_str(str).unwrap_or_default()
+    T::from_str(str)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 #[derive(Default, Debug)]
 pub struct Node {
     parent: Option<ParentNode>,
-    children: Vec<ChildNode>,
+    pub children: Vec<ChildNode>,
     raw_tag: Vec<u8>,
-    attributes: Vec<(Vec<u8>, Vec<u8>)>
+    attributes: Vec<(Vec<u8>, Vec<u8>)>,
+    _cdata: Option<String>,
 }
 
 impl Node {
-    // Current tag of element
+    /// Current tag of element
     pub fn tag(&self) -> Cow<str> {
         String::from_utf8_lossy(&self.raw_tag)
     }
 
-    pub fn attributes(&self) -> () {
-        todo!()
+    pub fn attributes(&self) -> Vec<(Cow<str>, Cow<str>)> {
+        self.attributes
+            .iter()
+            .map(|(k,v)| 
+                (String::from_utf8_lossy(k),String::from_utf8_lossy(v))
+            )
+            .collect()
+        // todo!()
     }
 
-    // Recursively traverse tree to find a desired tag
+    /// Recursively traverse tree to find a desired tag
     pub fn get_tag(&self, tag: &str) -> Result<ChildNode, XMLError> {
         for child in &self.children {
             if child.borrow().raw_tag == tag.as_bytes() {
@@ -60,20 +73,21 @@ impl Node {
             }
         }
 
-        Err(XMLError::TagNotPresent)
+        Err(XMLError::TagNotPresent(tag.to_owned()))
     }
     
-    // Get attribute, coerces the return type
-    // Returns an Error if attribute doesn't exist or if type coersion fails
+    /// Get attribute, coerces the return type
+    /// Returns an Error if attribute doesn't exist or if type coersion fails
     pub fn get_attribute<T>(&self, attr: &str) -> Result<T, XMLError> 
-    where T: FromStr + Default
+    where T: FromStr + Default,
+        <T as FromStr>::Err: std::error::Error + Send + Sync + 'static // TODO: How do I make this less ugly?
     {
         match self.get_attribute_raw(attr) {
             Some(raw_attr) => match from_utf8(&raw_attr) {
-                Ok(str) => Ok(convert::<T>(str)), // TODO
-                Err(_) => Err(XMLError::AttrNotPresent),
+                Ok(str) => Ok(convert::<T>(str)?),
+                Err(_) => Err(XMLError::Invalid),
             },
-            None => Err(XMLError::AttrNotPresent),
+            None => Err(XMLError::AttrNotPresent(attr.to_owned())),
         }
     }
 
@@ -87,9 +101,9 @@ impl Node {
     }
 }
 
-//  Build an xml tree from mmp
-//  We can then use the constructed tree to validate it.
-pub fn build_tree<R>(file: R) -> ChildNode
+///  Build an xml tree from mmp
+///  We can then use the constructed tree to validate it.
+pub fn build_tree<R>(file: R) -> Result<ChildNode, XMLError>
 where 
     R: BufRead + Seek
 {
@@ -124,7 +138,7 @@ where
 
                     // If there's a parent node on the stack:
                     // 1) Add this node to the parent's children
-                    // 2) Make this node's parent to this parent
+                    // 2) Set this node's parent to this parent
                     //
                     // I totally remembered that stacks are LIFO and didn't use .first()
                     if let Some(parent) = parent_stack.last() { 
@@ -144,60 +158,16 @@ where
                 // Empty(_) => todo!(),
                 // Text(_) => todo!(),
                 // Comment(_) => todo!(),
-                CData(e) => {dbg!(e);}, // TODO: Needed for project notes
-                Decl(e) => {dbg!(e);},
-                // PI(_) => todo!(),
-                DocType(e) => {dbg!(e);},
+                // CData(e) => {dbg!(e);}, // TODO: Needed for project notes
+                // Decl(e) => {dbg!(e);},
+                // // PI(_) => todo!(),
+                // DocType(e) => {dbg!(e);},
                 Eof => break,
                 _ => continue,
             },
-            Err(e) => break, // TODO: replace with error
+            Err(_) => return Err(XMLError::Invalid), // TODO: replace with error
         }
         buf.clear();
     }
-    root_tree.unwrap()
-}
-
-
-#[test] 
-fn a() {
-    let a = File::open("../format.mmp").unwrap();
-    let xml = build_tree(BufReader::new(a));
-    let root = xml.borrow(); // The root of the lmms project
-
-    assert_eq!(root.tag(), "lmms-project");
-    dbg!(root.tag());
-    dbg!(root.children.len());
-
-    // let a = &xml.get_tag("trackcontainer").unwrap();
-    // head.borrow().attributes
-    match (root.get_tag("head") , root.get_tag("song")) {
-        (Ok(_), Ok(_)) => {println!("Valid!")},
-        _ => {println!("INVALID")}
-    }
-    let version: _ = root.get_attribute::<usize>("version");
-    let song_type: _ = root.get_attribute::<String>("type");
-    let creator: _ = root.get_attribute::<String>("creator");
-    let creatorversion:_ = root.get_attribute::<String>("creatorversion"); 
-
-    let song_info = root.get_tag("song").unwrap();
-    let song_info = song_info.borrow();
-
-    let head = root.get_tag("head").unwrap();
-    let head = head.borrow();
-
-    // dbg!(song_info.children.len());
-    for e in &song_info.children {
-        println!("{}", e.borrow().tag())
-    }
-    for attr in root.attributes.iter().map(|(k,v)| (String::from_utf8_lossy(k),String::from_utf8_lossy(v))) {
-        dbg!(attr);
-    };
-
-    // dbg!(version);
-    // dbg!(song_type);
-    // dbg!(creator);
-    // dbg!(creatorversion);
-
-    
+    root_tree.ok_or_else(|| XMLError::Invalid)
 }
