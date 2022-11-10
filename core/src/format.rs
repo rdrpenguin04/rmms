@@ -92,6 +92,7 @@ macro_rules! unexpected_eof {
 fn convert<T>(str: &str) -> io::Result<T>
 where
     T: FromStr + Default,
+    <T as FromStr>::Err: std::error::Error + Send + Sync + 'static
 {
     T::from_str(str)
         .map_err(|x| invalid_data!(x))
