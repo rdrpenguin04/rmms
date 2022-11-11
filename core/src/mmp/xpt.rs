@@ -15,12 +15,13 @@ pub enum XPTPatternError {
     #[error("{0}")]
     IoError(#[from] io::Error),
     
-    #[error("")]
-    Invalid,
+    #[error("{0}")]
+    Invalid(String),
 }
 
 #[derive(Debug)]
 pub struct Pattern {
+    pub project_info: Option<ProjectInfo>,
     pub ty: u8,
     pub muted: u8,  // or bool?
     pub name: String,
@@ -39,6 +40,11 @@ pub struct Note {
 }
 
 impl Pattern {
+    pub fn with_project_info(mut self, project_info: ProjectInfo) -> Self {
+        self.project_info = Some(project_info);
+        self
+    }
+
     pub fn from_xml(xml: ChildNode) -> Result<Self, XPTPatternError> {
         let pattern = xml.borrow();
 
@@ -68,24 +74,24 @@ impl Pattern {
             name,
             pos,
             steps,
-            notes
+            notes,
+            project_info: None,
         })
     }
 
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, XPTPatternError> {
-        let a = File::open(path)?;
-        let xml_data = xml::build_tree(BufReader::new(a))?;
-        let root = xml_data.borrow();
-
-        let project_info = ProjectInfo::new(xml_data.clone())?;
+        let file = File::open(path)?;
+        let root = xml::build_tree(BufReader::new(file))?;
+        let project_info = ProjectInfo::new(&root)?;
 
         if project_info.ty != "pattern" {
-            return Err(XPTPatternError::Invalid);
+            return Err(XPTPatternError::Invalid("not an LMMS pattern file".into()));
         }
 
         let pattern = root.get_tag("pattern")?;
 
-        Self::from_xml(pattern)
+        Ok(Self::from_xml(pattern)?
+            .with_project_info(project_info))
     }
 }
 
@@ -93,5 +99,9 @@ impl Pattern {
 #[test]
 fn xpt() {
     let xpt = Pattern::from_file("../test/chords.xpt");
-    let _ = dbg!(xpt);
+    if let Err(e) = xpt {
+        println!("{}", e);
+    } else {
+        dbg!(xpt);
+    };
 }

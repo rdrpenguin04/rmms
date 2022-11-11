@@ -45,14 +45,12 @@ pub struct SongInfo;
 
 impl MMP {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, MMPParseError> {
-        let a = File::open(path)?;
-        let xml_data = xml::build_tree(BufReader::new(a))?;
-        let root = xml_data.borrow();
-
-        let project_info = ProjectInfo::new(xml_data.clone())?;
+        let file = File::open(path)?;
+        let root = xml::build_tree(BufReader::new(file))?;
+        let project_info = ProjectInfo::new(&root)?;
 
         if project_info.ty != "song" {
-            return Err(MMPParseError::Invalid("()".into()));
+            return Err(MMPParseError::Invalid("not an LMMS project file".into()));
         }
         
         let header = Header::new(root.get_tag("head")?)?;
@@ -98,5 +96,9 @@ impl SongInfo {
 #[test]
 fn test() {
     let mmp = MMP::load("../test/format.mmp");
-    let _ = dbg!(mmp);
+    if let Err(e) = mmp {
+        println!("{}", e);
+    } else {
+        dbg!(mmp);
+    };
 }

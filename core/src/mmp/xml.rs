@@ -1,44 +1,74 @@
-use quick_xml::{self, Reader, events::Event};
+use quick_xml::{self, Reader, events::Event, Error as QuickXMLError};
 use std::borrow::Cow;
-use std::io::{BufRead, Seek, self};
+use std::io::{BufRead, Seek};
 use std::rc::{Weak, Rc};
 use std::cell::RefCell;
 use std::str::{from_utf8, FromStr};
+use thiserror::Error;
 
 pub type ParentNode = Weak<RefCell<Node>>;
 pub type ChildNode= Rc<RefCell<Node>>;
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub enum XMLError{
-    #[error("Invalid XML")]
-    Invalid,
+    #[error("Invalid XML: {0}")]
+    Invalid(String),
 
     #[error("Could not find attribute \"{0}\"")]
     AttrNotPresent(String),
 
     #[error("Could not find tag \"{0}\"")]
     TagNotPresent(String),
-
-    #[error("{0}")]
-    IoError(#[from] io::Error),
     
     #[error("{0}")]
-    Error(String)
+    Error(String),
+
+    #[error("{0}")]
+    ParseError(#[from] QuickXMLError),
+
+    #[error("{0}")]
+    TypeCoercionError(#[from] TypeCoercionError)
+}
+
+impl XMLError {
+    pub fn invalid(err: &str) -> Self {
+        Self::Invalid(err.to_owned())
+    }
+
+    pub fn attr_not_present(err: &str) -> Self {
+        Self::AttrNotPresent(err.to_owned())
+    }
+
+    pub fn tag_not_present(err: &str) -> Self {
+        Self::TagNotPresent(err.to_owned())
+    }
+}
+
+#[derive(Error, Debug)]
+#[error("Could not convert \"{0}\" to the desired type, {1}.")]
+pub struct TypeCoercionError(String, Box<dyn std::error::Error + Send + Sync>);
+
+impl TypeCoercionError {
+    pub fn new<E>(input: &str, error: E) -> Self 
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        Self(input.to_owned(), error.into())
+    }
 }
 
 /// Helper function to convert strings to different types
-fn convert<T>(str: &str) -> Result<T, io::Error>
+fn convert<T>(str: &str) -> Result<T, TypeCoercionError>
 where
     T: FromStr + Default, 
     <T as FromStr>::Err: std::error::Error + Send + Sync + 'static
-    // TODO: Refactor
 {
     T::from_str(str)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        .map_err(|e| TypeCoercionError::new(str, e))
 }
 
+/// XML node
 #[derive(Default, Debug)]
 pub struct Node {
     parent: Option<ParentNode>,
@@ -58,10 +88,9 @@ impl Node {
         self.attributes
             .iter()
             .map(|(k,v)| 
-                (String::from_utf8_lossy(k),String::from_utf8_lossy(v))
+                (String::from_utf8_lossy(k), String::from_utf8_lossy(v))
             )
             .collect()
-        // todo!()
     }
 
     /// Recursively traverse tree to find a desired tag
@@ -76,7 +105,7 @@ impl Node {
             }
         }
 
-        Err(XMLError::TagNotPresent(tag.to_owned()))
+        Err(XMLError::tag_not_present(tag))
     }
     
     /// Get attribute, coerces the return type
@@ -88,9 +117,9 @@ impl Node {
         match self.get_attribute_raw(attr) {
             Some(raw_attr) => match from_utf8(&raw_attr) {
                 Ok(str) => Ok(convert::<T>(str)?),
-                Err(_) => Err(XMLError::Invalid),
+                Err(_) => Err(XMLError::invalid("Attribute is not a valid UTF-8 string")),
             },
-            None => Err(XMLError::AttrNotPresent(attr.to_owned())),
+            None => Err(XMLError::attr_not_present(attr)),
         }
     }
 
@@ -106,7 +135,7 @@ impl Node {
 
 ///  Build an xml tree from mmp
 ///  We can then use the constructed tree to validate it.
-pub fn build_tree<R>(file: R) -> Result<ChildNode, XMLError>
+pub fn build_tree<R>(file: R) -> Result<Node, XMLError>
 where 
     R: BufRead + Seek
 {
@@ -158,19 +187,23 @@ where
                 },
 
                 End(_) => if !parent_stack.is_empty() { parent_stack.pop(); },
-                // Empty(_) => todo!(),
-                // Text(_) => todo!(),
+
                 // Comment(_) => todo!(),
                 // CData(e) => {dbg!(e);}, // TODO: Needed for project notes
                 // Decl(e) => {dbg!(e);},
-                // // PI(_) => todo!(),
+                // PI(_) => todo!(),
                 // DocType(e) => {dbg!(e);},
                 Eof => break,
                 _ => continue,
             },
-            Err(_) => return Err(XMLError::Invalid), // TODO: replace with error
+            Err(e) => return Err(XMLError::ParseError(e)),
         }
         buf.clear();
     }
-    root_tree.ok_or_else(|| XMLError::Invalid)
+
+    let Some(xml) = root_tree else {
+        return Err(XMLError::invalid("Expected an XML tree but it does not exist"));
+    };
+
+    Ok(xml.take())
 }
