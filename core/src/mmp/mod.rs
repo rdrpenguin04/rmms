@@ -51,7 +51,7 @@ impl MMP {
 
         let project_info = ProjectInfo::new(xml_data.clone())?;
 
-        if project_info.r#type != "song" {
+        if project_info.ty != "song" {
             return Err(MMPParseError::Invalid("()".into()));
         }
         

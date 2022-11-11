@@ -21,7 +21,7 @@ pub enum XPTPatternError {
 
 #[derive(Debug)]
 pub struct Pattern {
-    pub r#type: u8,
+    pub ty: u8,
     pub muted: u8,  // or bool?
     pub name: String,
     pub pos: u16, // check
@@ -43,7 +43,7 @@ impl Pattern {
         let pattern = xml.borrow();
 
         let steps = pattern.get_attribute("steps")?;
-        let r#type = pattern.get_attribute("type")?;
+        let ty = pattern.get_attribute("type")?;
         let muted = pattern.get_attribute("muted")?;
         let name = pattern.get_attribute("name")?;
         let pos = pattern.get_attribute("pos")?;
@@ -63,7 +63,7 @@ impl Pattern {
         };
 
         Ok(Self { 
-            r#type,
+            ty,
             muted,
             name,
             pos,
@@ -79,7 +79,7 @@ impl Pattern {
 
         let project_info = ProjectInfo::new(xml_data.clone())?;
 
-        if project_info.r#type != "pattern" {
+        if project_info.ty != "pattern" {
             return Err(XPTPatternError::Invalid);
         }
 
