@@ -21,6 +21,7 @@ pub enum XPTPatternError {
 
 #[derive(Debug)]
 pub struct Pattern {
+    pub project_info: Option<ProjectInfo>,
     pub ty: u8,
     pub muted: u8,  // or bool?
     pub name: String,
@@ -39,6 +40,11 @@ pub struct Note {
 }
 
 impl Pattern {
+    pub fn with_project_info(mut self, project_info: ProjectInfo) -> Self {
+        self.project_info = Some(project_info);
+        self
+    }
+
     pub fn from_xml(xml: ChildNode) -> Result<Self, XPTPatternError> {
         let pattern = xml.borrow();
 
@@ -68,7 +74,8 @@ impl Pattern {
             name,
             pos,
             steps,
-            notes
+            notes,
+            project_info: None,
         })
     }
 
@@ -83,7 +90,8 @@ impl Pattern {
 
         let pattern = root.get_tag("pattern")?;
 
-        Self::from_xml(pattern)
+        Ok(Self::from_xml(pattern)?
+            .with_project_info(project_info))
     }
 }
 
