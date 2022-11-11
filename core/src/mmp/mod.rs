@@ -1,8 +1,14 @@
 mod xml;
+mod xpt;
+mod project;
+
 use std::{path::Path, fs::File};
 use std::io::{self, BufReader};
 use thiserror::Error;
 use xml::{ChildNode, XMLError};
+
+use project::ProjectInfo;
+use xpt::{Pattern, XPTPatternError};
 
 #[derive(Error, Debug)]
 pub enum MMPParseError {
@@ -14,15 +20,16 @@ pub enum MMPParseError {
 
     #[error("{0}")]
     IoError(#[from] io::Error),
+    
+    #[error("{0}")]
+    XPTError(#[from] XPTPatternError)
 }
 
 #[derive(Debug)]
 pub struct MMP {
+    project_info: ProjectInfo,
     header: Header,
     song_info: SongInfo,
-    creator: String,
-    version: usize,
-    creator_version: String,
 }
 
 #[derive(Debug)]
@@ -37,33 +44,24 @@ pub struct Header {
 pub struct SongInfo;
 
 impl MMP {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, MMPParseError>{
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, MMPParseError> {
         let a = File::open(path)?;
         let xml_data = xml::build_tree(BufReader::new(a))?;
         let root = xml_data.borrow();
 
-        if root.tag() != "lmms-project" {
-            return Err(MMPParseError::Invalid("()".into()));
-        }
-        let mmp_type: String = root.get_attribute("type")?;
+        let project_info = ProjectInfo::new(xml_data.clone())?;
 
-        if mmp_type != "song" {
+        if project_info.r#type != "song" {
             return Err(MMPParseError::Invalid("()".into()));
         }
         
         let header = Header::new(root.get_tag("head")?)?;
         let song_info = SongInfo::new(root.get_tag("song")?)?;
-
-        let creator = root.get_attribute("creator")?;
-        let version = root.get_attribute("version")?;
-        let creator_version = root.get_attribute("creatorversion")?;
         
         Ok(Self {
             header,
-            song_info,
-            creator,
-            creator_version,
-            version,
+            project_info,
+            song_info
         })
     }
 }
