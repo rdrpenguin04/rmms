@@ -15,8 +15,8 @@ pub enum XPTPatternError {
     #[error("{0}")]
     IoError(#[from] io::Error),
     
-    #[error("")]
-    Invalid,
+    #[error("{0}")]
+    Invalid(String),
 }
 
 #[derive(Debug)]
@@ -73,14 +73,12 @@ impl Pattern {
     }
 
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, XPTPatternError> {
-        let a = File::open(path)?;
-        let xml_data = xml::build_tree(BufReader::new(a))?;
-        let root = xml_data.borrow();
-
-        let project_info = ProjectInfo::new(xml_data.clone())?;
+        let file = File::open(path)?;
+        let root = xml::build_tree(BufReader::new(file))?;
+        let project_info = ProjectInfo::new(&root)?;
 
         if project_info.ty != "pattern" {
-            return Err(XPTPatternError::Invalid);
+            return Err(XPTPatternError::Invalid("not an LMMS pattern file".into()));
         }
 
         let pattern = root.get_tag("pattern")?;
@@ -93,5 +91,9 @@ impl Pattern {
 #[test]
 fn xpt() {
     let xpt = Pattern::from_file("../test/chords.xpt");
-    let _ = dbg!(xpt);
+    if let Err(e) = xpt {
+        println!("{}", e);
+    } else {
+        dbg!(xpt);
+    };
 }

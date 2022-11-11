@@ -1,4 +1,4 @@
-use crate::mmp::xml::{ChildNode, XMLError};
+use crate::mmp::xml::{Node, XMLError};
 
 #[derive(Debug)]
 pub struct ProjectInfo {
@@ -9,11 +9,9 @@ pub struct ProjectInfo {
 }
 
 impl ProjectInfo {
-    pub fn new(xml: ChildNode) -> Result<Self, XMLError> {
-        let info = xml.borrow();
-        
+    pub fn new(info: &Node) -> Result<Self, XMLError> {
         if info.tag() != "lmms-project" {
-            return Err(XMLError::Error("Invalid LMMS format, expected lmms-project".into()));
+            return Err(XMLError::Error("invalid LMMS format, expected lmms-project".into()));
         }
 
         let ty = info.get_attribute("type")?;
