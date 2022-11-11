@@ -23,6 +23,9 @@ pub enum XMLError{
 
     #[error("{0}")]
     IoError(#[from] io::Error),
+    
+    #[error("{0}")]
+    Error(String)
 }
 
 /// Helper function to convert strings to different types
@@ -77,7 +80,7 @@ impl Node {
     }
     
     /// Get attribute, coerces the return type
-    /// Returns an Error if attribute doesn't exist or if type coersion fails
+    /// Returns an Error if attribute doesn't exist or if type coercion fails
     pub fn get_attribute<T>(&self, attr: &str) -> Result<T, XMLError> 
     where T: FromStr + Default,
         <T as FromStr>::Err: std::error::Error + Send + Sync + 'static // TODO: How do I make this less ugly?

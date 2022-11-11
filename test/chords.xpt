@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE lmms-project>
+<lmms-project type="pattern" creator="LMMS" version="20" creatorversion="1.3.0-alpha.1.102+g89fc6c9">
+  <head/>
+  <pattern muted="0" type="1" steps="16" pos="0" name="">
+    <note key="72" vol="100" pan="0" len="96" pos="0"/>
+    <note key="67" vol="100" pan="0" len="96" pos="0"/>
+    <note key="63" vol="100" pan="0" len="96" pos="0"/>
+    <note key="72" vol="100" pan="0" len="12" pos="120"/>
+    <note key="67" vol="100" pan="0" len="12" pos="120"/>
+    <note key="63" vol="100" pan="0" len="12" pos="120"/>
+    <note key="68" vol="100" pan="0" len="48" pos="168"/>
+    <note key="65" vol="100" pan="0" len="48" pos="168"/>
+    <note key="60" vol="100" pan="0" len="48" pos="168"/>
+    <note key="56" vol="100" pan="0" len="48" pos="168"/>
+    <note key="68" vol="100" pan="0" len="12" pos="240"/>
+    <note key="65" vol="100" pan="0" len="12" pos="240"/>
+    <note key="60" vol="100" pan="0" len="12" pos="240"/>
+    <note key="56" vol="100" pan="0" len="12" pos="240"/>
+  </pattern>
+</lmms-project>
