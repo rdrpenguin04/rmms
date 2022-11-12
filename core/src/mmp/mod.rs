@@ -1,14 +1,14 @@
 mod xml;
 mod xpt;
 mod project;
+mod zlib;
 
 use std::{path::Path, fs::File};
-use std::io::{self, BufReader};
+use std::io::{self, BufReader, BufRead, Seek};
 use thiserror::Error;
-use xml::{ChildNode, XMLError};
-
-use project::ProjectInfo;
+use xml::{Node, ChildNode, XMLError};
 use xpt::{Pattern, XPTPatternError};
+use project::ProjectInfo;
 
 #[derive(Error, Debug)]
 pub enum MMPParseError {
@@ -44,9 +44,32 @@ pub struct Header {
 pub struct SongInfo;
 
 impl MMP {
+    /// Load LMMS project from path
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, MMPParseError> {
-        let file = File::open(path)?;
-        let root = xml::build_tree(BufReader::new(file))?;
+        let Some(ext) = &path.as_ref().extension() else {
+            return Err(MMPParseError::Invalid("File extension required".into()))
+        };
+    
+        let file = BufReader::new(File::open(&path)?);
+        
+        match ext.to_str() {
+            Some("mmp") | Some("MMP") => Self::load_mmp(file),
+            Some("mmpz") | Some("MMPZ") => Self::load_mmpz(file),
+            _ => Err(MMPParseError::Invalid("Expected extension mmp or mmpz".into())),
+        }
+    }
+
+    /// Load LMMS project from reader
+    pub fn load_mmp<R: BufRead + Seek>(file: R)  -> Result<Self, MMPParseError> {
+        Self::parse_mmp(xml::build_tree(file)?)
+    }
+
+    /// Load compressed LMMS project from reader
+    pub fn load_mmpz<R: BufRead + Seek>(file: R) -> Result<Self, MMPParseError> {
+        Self::parse_mmp(zlib::decompress(file)?)
+    }
+
+    fn parse_mmp(root: Node)-> Result<Self, MMPParseError> { 
         let project_info = ProjectInfo::new(&root)?;
 
         if project_info.ty != "song" {
@@ -95,7 +118,7 @@ impl SongInfo {
 
 #[test]
 fn test() {
-    let mmp = MMP::load("../test/format.mmp");
+    let mmp = MMP::load("../test/format.mmpz");
     if let Err(e) = mmp {
         println!("{}", e);
     } else {

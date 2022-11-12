@@ -137,7 +137,7 @@ impl Node {
 ///  We can then use the constructed tree to validate it.
 pub fn build_tree<R>(file: R) -> Result<Node, XMLError>
 where 
-    R: BufRead + Seek
+    R: BufRead
 {
     let mut root_tree: Option<ChildNode> = None;
     let mut parent_stack: Vec<ChildNode> = Vec::new();

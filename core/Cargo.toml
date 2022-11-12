@@ -15,4 +15,4 @@ audio_startup = ["cpal"]
 cpal = { workspace = true, optional = true }
 quick-xml = { workspace = true }
 thiserror = "1.0.37"
-zip = { version = "0.6.3", default-features = false, features = ["deflate"]}
+flate2 = "1.0.24"
