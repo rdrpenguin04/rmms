@@ -1,10 +1,12 @@
 use std::fs::File;
-use std::io::{BufReader, self};
+use std::io::{BufReader, self, BufRead, Seek};
 use std::path::Path;
 use thiserror::Error;
-
+use crate::mmp::zlib;
 use crate::mmp::project::ProjectInfo;
-use crate::mmp::xml::{ChildNode, self, XMLError};
+use crate::mmp::xml::{Node,ChildNode, self, XMLError};
+
+pub type XPT = Pattern;
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -21,11 +23,10 @@ pub enum XPTPatternError {
 
 #[derive(Debug)]
 pub struct Pattern {
-    pub project_info: Option<ProjectInfo>,
     pub ty: u8,
-    pub muted: u8,  // or bool?
+    pub muted: u8,      // or bool?
     pub name: String,
-    pub pos: u16, // check
+    pub pos: u16,       // check
     pub steps: u8,
     pub notes: Vec<Note>
 }
@@ -40,11 +41,45 @@ pub struct Note {
 }
 
 impl Pattern {
-    pub fn with_project_info(mut self, project_info: ProjectInfo) -> Self {
-        self.project_info = Some(project_info);
-        self
+    /// Load patten from path
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, XPTPatternError>  {
+        let Some(ext) = &path.as_ref().extension() else {
+            return Err(XPTPatternError::Invalid("File extension required".into()))
+        };
+    
+        let file = BufReader::new(File::open(&path)?);
+        
+        match ext.to_str() {
+            Some("xpt") | Some("XPT") => Self::load_xpt(file),
+            Some("xptz") | Some("XPTZ") => Self::load_xptz(file),
+            _ => Err(XPTPatternError::Invalid("Expected xpt or xptz".into())),
+        }
     }
 
+    /// load pattern from reader
+    pub fn load_xpt<R: BufRead + Seek>(file: R) -> Result<Self, XPTPatternError> {
+        Self::parse_xpt(xml::build_tree(file)?)
+    }
+
+    /// Load compressed pattern from reader
+    pub fn load_xptz<R: BufRead + Seek>(file: R) -> Result<Self, XPTPatternError> {
+        Self::parse_xpt(zlib::decompress(file)?)
+    }    
+
+    /// Validate (xpt|xptz) XML node.
+    fn parse_xpt(root: Node) -> Result<Self, XPTPatternError> {
+        let project_info = ProjectInfo::new(&root)?;
+
+        if project_info.ty != "pattern" {
+            return Err(XPTPatternError::Invalid("not an LMMS pattern file".into()));
+        }
+
+        Self::from_xml(root.get_tag("pattern")?)
+    }
+
+    /// LMMS' pattern data in mmp/mmpz is identical to the xpt format, but without the "lmms-project" tag.
+    /// 
+    /// This function allows the MMP struct to use this.
     pub fn from_xml(xml: ChildNode) -> Result<Self, XPTPatternError> {
         let pattern = xml.borrow();
 
@@ -75,30 +110,14 @@ impl Pattern {
             pos,
             steps,
             notes,
-            project_info: None,
         })
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, XPTPatternError> {
-        let file = File::open(path)?;
-        let root = xml::build_tree(BufReader::new(file))?;
-        let project_info = ProjectInfo::new(&root)?;
-
-        if project_info.ty != "pattern" {
-            return Err(XPTPatternError::Invalid("not an LMMS pattern file".into()));
-        }
-
-        let pattern = root.get_tag("pattern")?;
-
-        Ok(Self::from_xml(pattern)?
-            .with_project_info(project_info))
     }
 }
 
 
 #[test]
 fn xpt() {
-    let xpt = Pattern::from_file("../test/chords.xpt");
+    let xpt = Pattern::load("../test/chords.xptz");
     if let Err(e) = xpt {
         println!("{}", e);
     } else {

@@ -4,7 +4,7 @@ use crate::mmp::xml::{Node, XMLError};
 pub struct ProjectInfo {
     pub ty: String,
     pub creator: String,
-    pub version: usize,
+    pub version: usize, // NOTE: Older versions uses floats
     pub creator_version: String,
 }
 
