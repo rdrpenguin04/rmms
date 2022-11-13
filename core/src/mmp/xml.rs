@@ -3,9 +3,9 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::io::{self, BufRead};
 use std::rc::{Rc, Weak};
+use std::result::Result as StdResult;
 use std::str::{from_utf8, FromStr};
 use thiserror::Error;
-use std::result::Result as StdResult;
 
 pub type ParentNode = Weak<RefCell<Node>>;
 pub type ChildNode = Rc<RefCell<Node>>;

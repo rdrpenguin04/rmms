@@ -1,12 +1,12 @@
-use std::{
-    fs::File,
-    io::{self, BufReader, Write},
-};
+use std::{fs::File, io::Write};
 
 use bitvec::{prelude::Msb0, vec::BitVec};
 use clap::Parser;
 use flacenc::component::BitRepr;
-use rmms_core::{audio, format::ProjectFile};
+use rmms_core::{
+    audio,
+    mmp::{MMPParseError, MMP},
+};
 
 /// Standalone Exporter for RMMS projects
 #[derive(Parser, Debug)]
@@ -55,7 +55,7 @@ impl RenderOutput {
     }
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), MMPParseError> {
     let args = Args::parse();
 
     // ! TEMPORARY TEST CODE ! //
@@ -75,7 +75,7 @@ fn main() -> io::Result<()> {
         .unwrap();
     // ! END TEST CODE ! //
 
-    let file = ProjectFile::load(BufReader::new(File::open(args.filename)?))?;
+    let file = MMP::load(args.filename)?;
     println!("{file:?}");
     Ok(())
 }

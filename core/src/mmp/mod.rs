@@ -56,7 +56,7 @@ impl MMP {
 
         match ext.to_str() {
             Some("mmp" | "MMP") => Self::load_mmp(file),
-            Some("mmpz" |"MMPZ") => Self::load_mmpz(file),
+            Some("mmpz" | "MMPZ") => Self::load_mmpz(file),
             _ => Err(MMPParseError::Invalid(
                 "Expected extension mmp or mmpz".into(),
             )),
