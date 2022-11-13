@@ -1,4 +1,4 @@
-use crate::mmp::project::ProjectInfo;
+use crate::mmp::project::Info;
 use crate::mmp::xml::{self, ChildNode, Node};
 use crate::mmp::zlib;
 use std::fs::File;
@@ -42,6 +42,7 @@ pub struct Note {
 
 impl Pattern {
     /// Load patten from path
+    #[allow(clippy::missing_errors_doc)]
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         let Some(ext) = &path.as_ref().extension() else {
             return Err(Error::Invalid("File extension required".into()))
@@ -50,37 +51,41 @@ impl Pattern {
         let file = BufReader::new(File::open(&path)?);
 
         match ext.to_str() {
-            Some("xpt") | Some("XPT") => Self::load_xpt(file),
-            Some("xptz") | Some("XPTZ") => Self::load_xptz(file),
+            Some("xpt" | "XPT") => Self::load_xpt(file),
+            Some("xptz" | "XPTZ") => Self::load_xptz(file),
             _ => Err(Error::Invalid("Expected xpt or xptz".into())),
         }
     }
 
     /// load pattern from reader
+    #[allow(clippy::missing_errors_doc)]
     pub fn load_xpt<R: BufRead + Seek>(file: R) -> Result<Self> {
-        Self::parse_xpt(xml::build_tree(file)?)
+        Self::parse_xpt(&xml::build_tree(file)?)
     }
 
     /// Load compressed pattern from reader
+    #[allow(clippy::missing_errors_doc)]
     pub fn load_xptz<R: BufRead + Seek>(file: R) -> Result<Self> {
-        Self::parse_xpt(zlib::decompress(file)?)
+        Self::parse_xpt(&zlib::decompress(file)?)
     }
 
     /// Validate (xpt|xptz) XML node.
-    fn parse_xpt(root: Node) -> Result<Self> {
-        let project_info = ProjectInfo::new(&root)?;
+    #[allow(clippy::missing_errors_doc)]
+    fn parse_xpt(root: &Node) -> Result<Self> {
+        let project_info = Info::new(root)?;
 
         if project_info.ty != "pattern" {
             return Err(Error::Invalid("not an LMMS pattern file".into()));
         }
 
-        Self::from_xml(root.get_tag("pattern")?)
+        Self::from_xml(&root.get_tag("pattern")?)
     }
 
     /// LMMS' pattern data in mmp/mmpz is identical to the xpt format, but without the "lmms-project" tag.
     ///
     /// This function allows the MMP struct to use this.
-    pub fn from_xml(xml: ChildNode) -> Result<Self> {
+    #[allow(clippy::missing_errors_doc)]
+    pub fn from_xml(xml: &ChildNode) -> Result<Self> {
         let pattern = xml.borrow();
 
         let steps = pattern.get_attribute("steps")?;
@@ -98,7 +103,7 @@ impl Pattern {
                 vol: note.get_attribute("vol")?,
                 pan: note.get_attribute("pan")?,
                 pos: note.get_attribute("pos")?,
-            })
+            });
         }
 
         Ok(Self {

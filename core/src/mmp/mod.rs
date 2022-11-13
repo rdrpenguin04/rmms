@@ -3,7 +3,7 @@ pub mod xml;
 pub mod xpt;
 pub mod zlib;
 
-use project::ProjectInfo;
+use project::Info;
 use std::io::{self, BufRead, BufReader, Seek};
 use std::{fs::File, path::Path};
 use thiserror::Error;
@@ -27,7 +27,7 @@ pub enum MMPParseError {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct MMP {
-    project_info: ProjectInfo,
+    project_info: Info,
     header: Header,
     song_info: SongInfo,
 }
@@ -46,6 +46,7 @@ pub struct SongInfo;
 
 impl MMP {
     /// Load LMMS project from path
+    #[allow(clippy::missing_errors_doc)]
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, MMPParseError> {
         let Some(ext) = &path.as_ref().extension() else {
             return Err(MMPParseError::Invalid("File extension required".into()))
@@ -54,8 +55,8 @@ impl MMP {
         let file = BufReader::new(File::open(&path)?);
 
         match ext.to_str() {
-            Some("mmp") | Some("MMP") => Self::load_mmp(file),
-            Some("mmpz") | Some("MMPZ") => Self::load_mmpz(file),
+            Some("mmp" | "MMP") => Self::load_mmp(file),
+            Some("mmpz" |"MMPZ") => Self::load_mmpz(file),
             _ => Err(MMPParseError::Invalid(
                 "Expected extension mmp or mmpz".into(),
             )),
@@ -63,35 +64,39 @@ impl MMP {
     }
 
     /// Load LMMS project from reader
+    #[allow(clippy::missing_errors_doc)]
     pub fn load_mmp<R: BufRead + Seek>(file: R) -> Result<Self, MMPParseError> {
-        Self::parse_mmp(xml::build_tree(file)?)
+        Self::parse_mmp(&xml::build_tree(file)?)
     }
 
     /// Load compressed LMMS project from reader
+    #[allow(clippy::missing_errors_doc)]
     pub fn load_mmpz<R: BufRead + Seek>(file: R) -> Result<Self, MMPParseError> {
-        Self::parse_mmp(zlib::decompress(file)?)
+        Self::parse_mmp(&zlib::decompress(file)?)
     }
 
-    fn parse_mmp(root: Node) -> Result<Self, MMPParseError> {
-        let project_info = ProjectInfo::new(&root)?;
+    #[allow(clippy::missing_errors_doc)]
+    fn parse_mmp(root: &Node) -> Result<Self, MMPParseError> {
+        let project_info = Info::new(root)?;
 
         if project_info.ty != "song" {
             return Err(MMPParseError::Invalid("not an LMMS project file".into()));
         }
 
-        let header = Header::new(root.get_tag("head")?)?;
-        let song_info = SongInfo::new(root.get_tag("song")?)?;
+        let header = Header::new(&root.get_tag("head")?)?;
+        let song_info = SongInfo::new(&root.get_tag("song")?)?;
 
         Ok(Self {
-            header,
             project_info,
+            header,
             song_info,
         })
     }
 }
 
 impl Header {
-    pub fn new(xml: ChildNode) -> Result<Self, MMPParseError> {
+    #[allow(clippy::missing_errors_doc)]
+    pub fn new(xml: &ChildNode) -> Result<Self, MMPParseError> {
         let head = xml.borrow();
 
         Ok(Self {
@@ -107,7 +112,8 @@ impl Header {
 }
 
 impl SongInfo {
-    pub fn new(xml: ChildNode) -> Result<Self, MMPParseError> {
+    #[allow(clippy::missing_errors_doc)]
+    pub fn new(xml: &ChildNode) -> Result<Self, MMPParseError> {
         let song_info = xml.borrow();
         println!("Tags in song:");
 

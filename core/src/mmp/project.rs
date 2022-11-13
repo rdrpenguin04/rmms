@@ -1,14 +1,15 @@
 use crate::mmp::xml::{self, Node};
 
 #[derive(Debug)]
-pub struct ProjectInfo {
+pub struct Info {
     pub ty: String,
     pub creator: String,
     pub version: usize, // NOTE: Older versions uses floats
     pub creator_version: String,
 }
 
-impl ProjectInfo {
+impl Info {
+    #[allow(clippy::missing_errors_doc)]
     pub fn new(info: &Node) -> xml::Result<Self> {
         if info.tag() != "lmms-project" {
             return Err(xml::Error::Error(

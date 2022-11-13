@@ -1,14 +1,15 @@
 use quick_xml::{self, events::Event, Error as QuickXMLError, Reader};
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::io::BufRead;
+use std::io::{self, BufRead};
 use std::rc::{Rc, Weak};
 use std::str::{from_utf8, FromStr};
 use thiserror::Error;
+use std::result::Result as StdResult;
 
 pub type ParentNode = Weak<RefCell<Node>>;
 pub type ChildNode = Rc<RefCell<Node>>;
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -30,17 +31,23 @@ pub enum Error {
 
     #[error("{0}")]
     TypeCoercionError(#[from] TypeCoercionError),
+
+    #[error("{0}")]
+    Io(#[from] io::Error),
 }
 
 impl Error {
+    #[must_use]
     pub fn invalid(err: &str) -> Self {
         Self::Invalid(err.to_owned())
     }
 
+    #[must_use]
     pub fn attr_not_present(err: &str) -> Self {
         Self::AttrNotPresent(err.to_owned())
     }
 
+    #[must_use]
     pub fn tag_not_present(err: &str) -> Self {
         Self::TagNotPresent(err.to_owned())
     }
@@ -80,10 +87,12 @@ pub struct Node {
 
 impl Node {
     /// Current tag of element
+    #[must_use]
     pub fn tag(&self) -> Cow<str> {
         String::from_utf8_lossy(&self.raw_tag)
     }
 
+    #[must_use]
     pub fn attributes(&self) -> Vec<(Cow<str>, Cow<str>)> {
         self.attributes
             .iter()
@@ -92,6 +101,7 @@ impl Node {
     }
 
     /// Recursively traverse tree to find a desired tag
+    #[allow(clippy::missing_errors_doc)]
     pub fn get_tag(&self, tag: &str) -> Result<ChildNode> {
         for child in &self.children {
             if child.borrow().raw_tag == tag.as_bytes() {
@@ -106,6 +116,7 @@ impl Node {
 
     /// Get attribute, coerces the return type
     /// Returns an Error if attribute doesn't exist or if type coercion fails
+    #[allow(clippy::missing_errors_doc)]
     pub fn get_attribute<T>(&self, attr: &str) -> Result<T>
     where
         T: FromStr + Default,
@@ -120,6 +131,7 @@ impl Node {
         }
     }
 
+    #[must_use]
     pub fn get_attribute_raw(&self, attr: &str) -> Option<&[u8]> {
         for attribute in &self.attributes {
             if attribute.0 == attr.as_bytes() {
@@ -132,6 +144,8 @@ impl Node {
 
 ///  Build an xml tree from mmp
 ///  We can then use the constructed tree to validate it.
+#[allow(clippy::enum_glob_use)] // TODO: Evaluate if this is necessary
+#[allow(clippy::missing_errors_doc)]
 pub fn build_tree<R>(file: R) -> Result<Node>
 where
     R: BufRead,
@@ -148,15 +162,15 @@ where
                 Start(ref e) | Empty(ref e) => {
                     let attributes = e
                         .attributes()
-                        .filter_map(|f| f.ok())
+                        .filter_map(StdResult::ok)
                         .map(|f| (f.key.0.to_owned(), f.value.to_vec()))
                         .collect();
 
                     let raw_tag = e.name().0.to_owned();
 
                     let node = Rc::new(RefCell::new(Node {
-                        attributes,
                         raw_tag,
+                        attributes,
                         ..Default::default()
                     }));
 
@@ -173,7 +187,7 @@ where
                     if let Some(parent) = parent_stack.last() {
                         parent.borrow_mut().children.push(node.clone());
                         // Use Weak<T> to prevent reference cycles, which can cause memory leaks
-                        node.borrow_mut().parent = Some(Rc::downgrade(parent))
+                        node.borrow_mut().parent = Some(Rc::downgrade(parent));
                     }
 
                     // Only push the node to stack if the event is not an empty element tag

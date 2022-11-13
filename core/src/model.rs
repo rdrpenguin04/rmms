@@ -19,7 +19,7 @@ impl<T: Copy> Model<T> {
         self.value = (self.rev_map)(value);
         self.was_changed = true;
     }
-    pub fn get_unmapped_value(&self) -> T {
+    pub const fn get_unmapped_value(&self) -> T {
         self.value
     }
 
@@ -51,11 +51,11 @@ impl<T: Copy> Model<T> {
         self.rev_map = rev_map;
     }
 
-    pub fn display_name(&self) -> &String {
+    pub const fn display_name(&self) -> &String {
         &self.display_name
     }
 
-    pub fn full_display_name(&self) -> &Option<String> {
+    pub const fn full_display_name(&self) -> &Option<String> {
         &self.full_display_name
     }
 
