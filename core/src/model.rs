@@ -19,6 +19,7 @@ impl<T: Copy> Model<T> {
         self.value = (self.rev_map)(value);
         self.was_changed = true;
     }
+    
     pub const fn get_unmapped_value(&self) -> T {
         self.value
     }
