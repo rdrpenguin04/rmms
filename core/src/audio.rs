@@ -86,9 +86,7 @@ impl Engine {
     }
 
     pub fn new() -> Self {
-        Self {
-            play: false,
-        }
+        Self { play: false }
     }
 }
 

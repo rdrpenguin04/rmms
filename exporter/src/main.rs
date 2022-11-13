@@ -3,10 +3,10 @@ use std::{
     io::{self, BufReader, Write},
 };
 
-use bitvec::{vec::BitVec, prelude::Msb0};
+use bitvec::{prelude::Msb0, vec::BitVec};
 use clap::Parser;
 use flacenc::component::BitRepr;
-use rmms_core::{format::ProjectFile, audio};
+use rmms_core::{audio, format::ProjectFile};
 
 /// Standalone Exporter for RMMS projects
 #[derive(Parser, Debug)]
@@ -32,7 +32,10 @@ impl flacenc::source::Source for RenderOutput {
         44100
     }
 
-    fn read_samples(&mut self, dest: &mut flacenc::source::FrameBuf) -> Result<usize, flacenc::error::SourceError> {
+    fn read_samples(
+        &mut self,
+        dest: &mut flacenc::source::FrameBuf,
+    ) -> Result<usize, flacenc::error::SourceError> {
         let mut count = 0;
         for x in dest.channel_slice_mut(0) {
             if self.index >= self.data.len() {
@@ -48,10 +51,7 @@ impl flacenc::source::Source for RenderOutput {
 
 impl RenderOutput {
     fn new(data: Box<[i32]>) -> Self {
-        Self {
-            data,
-            index: 0,
-        }
+        Self { data, index: 0 }
     }
 }
 
@@ -65,10 +65,14 @@ fn main() -> io::Result<()> {
     audio_engine.fill_buffer(&mut output);
     let render_output = RenderOutput::new(Box::from(output));
     let encoder = flacenc::config::Encoder::default();
-    let stream = flacenc::coding::encode_with_fixed_block_size(&encoder, render_output, 2048).unwrap();
+    let stream =
+        flacenc::coding::encode_with_fixed_block_size(&encoder, render_output, 2048).unwrap();
     let mut bitvec: BitVec<u8, Msb0> = BitVec::with_capacity(stream.count_bits());
     stream.write(&mut bitvec).unwrap();
-    File::create("output.flac").unwrap().write_all(bitvec.as_raw_slice()).unwrap();
+    File::create("output.flac")
+        .unwrap()
+        .write_all(bitvec.as_raw_slice())
+        .unwrap();
     // ! END TEST CODE ! //
 
     let file = ProjectFile::load(BufReader::new(File::open(args.filename)?))?;
