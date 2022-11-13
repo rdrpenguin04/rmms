@@ -10,3 +10,5 @@ categories.workspace = true
 
 [dependencies]
 rmms-core = { path = "../../core", features = ["cpal"] }
+
+egui = { workspace = true }

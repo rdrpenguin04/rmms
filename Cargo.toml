@@ -9,9 +9,13 @@ license = "GPL-3.0-or-later"
 categories = ["multimedia::audio"]
 
 [workspace.dependencies]
+bitvec = "1"
 clap = "4"
 cpal = "0.14"
+egui = "0.19"
 flacenc = { git = "https://github.com/yotarok/flacenc-rs" }
+flate2 = "1.0.24"
+iced = "0.5"
 quick-xml = "0.26"
 rand = "0.8"
-bitvec = "1"
+thiserror = "1.0.37"

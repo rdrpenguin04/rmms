@@ -10,6 +10,7 @@ categories.workspace = true
 
 [dependencies]
 rmms-core = { path = "../core" }
+
+bitvec = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 flacenc = { workspace = true }
-bitvec = { workspace = true }

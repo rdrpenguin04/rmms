@@ -13,6 +13,6 @@ audio_startup = ["cpal"]
 
 [dependencies]
 cpal = { workspace = true, optional = true }
+flate2 = { workspace = true }
 quick-xml = { workspace = true }
-thiserror = "1.0.37"
-flate2 = "1.0.24"
+thiserror = { workspace = true }
