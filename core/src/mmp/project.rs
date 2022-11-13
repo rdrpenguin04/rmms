@@ -1,4 +1,4 @@
-use crate::mmp::xml::{Node, XMLError};
+use crate::mmp::xml::{self, Node};
 
 #[derive(Debug)]
 pub struct ProjectInfo {
@@ -9,9 +9,9 @@ pub struct ProjectInfo {
 }
 
 impl ProjectInfo {
-    pub fn new(info: &Node) -> Result<Self, XMLError> {
+    pub fn new(info: &Node) -> xml::Result<Self> {
         if info.tag() != "lmms-project" {
-            return Err(XMLError::Error(
+            return Err(xml::Error::Error(
                 "invalid LMMS format, expected lmms-project".into(),
             ));
         }

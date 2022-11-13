@@ -90,6 +90,12 @@ impl Engine {
     }
 }
 
+impl Default for Engine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(feature = "cpal")]
 #[derive(Debug)]
 pub enum CreationError {

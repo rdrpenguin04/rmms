@@ -15,7 +15,7 @@ impl<T: Copy> Model<T> {
         (self.map)(self.value)
     }
 
-    pub fn set_value(&mut self, value: T) -> () {
+    pub fn set_value(&mut self, value: T) {
         self.value = (self.rev_map)(value);
         self.was_changed = true;
     }
@@ -23,7 +23,7 @@ impl<T: Copy> Model<T> {
         self.value
     }
 
-    pub fn set_unmapped_value(&mut self, value: T) -> () {
+    pub fn set_unmapped_value(&mut self, value: T) {
         self.value = value;
         self.was_changed = true;
     }

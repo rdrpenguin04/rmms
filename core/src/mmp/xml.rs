@@ -1,17 +1,18 @@
 use quick_xml::{self, events::Event, Error as QuickXMLError, Reader};
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::io::{BufRead, Seek};
+use std::io::BufRead;
 use std::rc::{Rc, Weak};
 use std::str::{from_utf8, FromStr};
 use thiserror::Error;
 
 pub type ParentNode = Weak<RefCell<Node>>;
 pub type ChildNode = Rc<RefCell<Node>>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, Debug)]
 #[error(transparent)]
-pub enum XMLError {
+pub enum Error {
     #[error("Invalid XML: {0}")]
     Invalid(String),
 
@@ -31,7 +32,7 @@ pub enum XMLError {
     TypeCoercionError(#[from] TypeCoercionError),
 }
 
-impl XMLError {
+impl Error {
     pub fn invalid(err: &str) -> Self {
         Self::Invalid(err.to_owned())
     }
@@ -59,7 +60,7 @@ impl TypeCoercionError {
 }
 
 /// Helper function to convert strings to different types
-fn convert<T>(str: &str) -> Result<T, TypeCoercionError>
+fn convert<T>(str: &str) -> std::result::Result<T, TypeCoercionError>
 where
     T: FromStr + Default,
     <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
@@ -91,33 +92,31 @@ impl Node {
     }
 
     /// Recursively traverse tree to find a desired tag
-    pub fn get_tag(&self, tag: &str) -> Result<ChildNode, XMLError> {
+    pub fn get_tag(&self, tag: &str) -> Result<ChildNode> {
         for child in &self.children {
             if child.borrow().raw_tag == tag.as_bytes() {
                 return Ok(child.clone());
-            } else {
-                if let Ok(t) = child.clone().borrow().get_tag(tag) {
-                    return Ok(t);
-                };
+            } else if let Ok(t) = child.clone().borrow().get_tag(tag) {
+                return Ok(t);
             }
         }
 
-        Err(XMLError::tag_not_present(tag))
+        Err(Error::tag_not_present(tag))
     }
 
     /// Get attribute, coerces the return type
     /// Returns an Error if attribute doesn't exist or if type coercion fails
-    pub fn get_attribute<T>(&self, attr: &str) -> Result<T, XMLError>
+    pub fn get_attribute<T>(&self, attr: &str) -> Result<T>
     where
         T: FromStr + Default,
         <T as FromStr>::Err: std::error::Error + Send + Sync + 'static, // TODO: How do I make this less ugly?
     {
         match self.get_attribute_raw(attr) {
-            Some(raw_attr) => match from_utf8(&raw_attr) {
+            Some(raw_attr) => match from_utf8(raw_attr) {
                 Ok(str) => Ok(convert::<T>(str)?),
-                Err(_) => Err(XMLError::invalid("Attribute is not a valid UTF-8 string")),
+                Err(_) => Err(Error::invalid("Attribute is not a valid UTF-8 string")),
             },
-            None => Err(XMLError::attr_not_present(attr)),
+            None => Err(Error::attr_not_present(attr)),
         }
     }
 
@@ -133,7 +132,7 @@ impl Node {
 
 ///  Build an xml tree from mmp
 ///  We can then use the constructed tree to validate it.
-pub fn build_tree<R>(file: R) -> Result<Node, XMLError>
+pub fn build_tree<R>(file: R) -> Result<Node>
 where
     R: BufRead,
 {
@@ -174,7 +173,7 @@ where
                     if let Some(parent) = parent_stack.last() {
                         parent.borrow_mut().children.push(node.clone());
                         // Use Weak<T> to prevent reference cycles, which can cause memory leaks
-                        node.borrow_mut().parent = Some(Rc::downgrade(&parent))
+                        node.borrow_mut().parent = Some(Rc::downgrade(parent))
                     }
 
                     // Only push the node to stack if the event is not an empty element tag
@@ -198,13 +197,13 @@ where
                 Eof => break,
                 _ => continue,
             },
-            Err(e) => return Err(XMLError::ParseError(e)),
+            Err(e) => return Err(Error::ParseError(e)),
         }
         buf.clear();
     }
 
     let Some(xml) = root_tree else {
-        return Err(XMLError::invalid("Expected an XML tree but it does not exist"));
+        return Err(Error::invalid("Expected an XML tree but it does not exist"));
     };
 
     Ok(xml.take())

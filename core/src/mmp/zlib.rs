@@ -1,8 +1,8 @@
-use crate::mmp::xml::{self, Node, XMLError};
+use crate::mmp::xml::{self, Node};
 use flate2::read::ZlibDecoder;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 
-pub fn decompress<R>(mut file: R) -> Result<Node, XMLError>
+pub fn decompress<R>(mut file: R) -> xml::Result<Node>
 where
     R: BufRead + Seek,
 {

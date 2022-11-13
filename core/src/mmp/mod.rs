@@ -1,14 +1,13 @@
-mod project;
-mod xml;
-mod xpt;
-mod zlib;
+pub mod project;
+pub mod xml;
+pub mod xpt;
+pub mod zlib;
 
 use project::ProjectInfo;
 use std::io::{self, BufRead, BufReader, Seek};
 use std::{fs::File, path::Path};
 use thiserror::Error;
-use xml::{ChildNode, Node, XMLError};
-use xpt::{Pattern, XPTPatternError};
+use xml::{ChildNode, Node};
 
 #[derive(Error, Debug)]
 pub enum MMPParseError {
@@ -16,15 +15,16 @@ pub enum MMPParseError {
     Invalid(String),
 
     #[error("{0}")]
-    XML(#[from] XMLError),
+    XML(#[from] xml::Error),
 
     #[error("{0}")]
     IoError(#[from] io::Error),
 
     #[error("{0}")]
-    XPTError(#[from] XPTPatternError),
+    XPTError(#[from] xpt::Error),
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct MMP {
     project_info: ProjectInfo,
@@ -32,6 +32,7 @@ pub struct MMP {
     song_info: SongInfo,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Header {
     bpm: f32,
