@@ -21,4 +21,4 @@ LMMS successor candidate, written in Rust. This is not currently endorsed by the
     * Long-term goal, not a priority to focus on getting a stable/maintainable core
 
 ## License note
-The license is currently subject to relaxing; as I (Ray) am the sole developer, I have the right to relax the license, and with permission from the LMMS project, I would prefer to relax the license to BSDPlusPatent or similar.
+The license is currently subject to relaxing. With permission from the LMMS project, one of the developers (at least) would prefer to relax the license to BSDPlusPatent or similar. The entire RMMS development team must be in consensus to relax the license.
