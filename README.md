@@ -20,5 +20,7 @@ LMMS successor candidate, written in Rust. This is not currently endorsed by the
   * [ ] GUI
     * Long-term goal, not a priority to focus on getting a stable/maintainable core
 
+We have a [wiki](https://github.com/rdrpenguin04/rmms/wiki/) for documenting our ideas.
+
 ## License note
 The license is currently subject to relaxing. With permission from the LMMS project, one of the developers (at least) would prefer to relax the license to BSDPlusPatent or similar. The entire RMMS development team must be in consensus to relax the license.
