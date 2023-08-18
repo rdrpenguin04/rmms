@@ -16,6 +16,7 @@ egui = "0.22"
 flacenc = { git = "https://github.com/yotarok/flacenc-rs" }
 flate2 = "1"
 iced = "0.10"
-quick-xml = "0.30"
+quick-xml = { version = "0.30", features = ["serde-types", "serialize"] }
 rand = "0.8"
+serde = { version = "1", features = ["derive"] }
 thiserror = "1"
