@@ -1,11 +1,14 @@
-use std::{fs::File, io::{Write, BufReader}};
+use std::{
+    fs::File,
+    io::{BufReader, Write},
+};
 
 use bitvec::{prelude::Msb0, vec::BitVec};
 use clap::Parser;
 use flacenc::component::BitRepr;
 use rmms_core::{
     audio,
-    mmp::{MmpReadError, Mmp},
+    mmp::{Mmp, MmpReadError},
 };
 
 /// Standalone Exporter for RMMS projects
