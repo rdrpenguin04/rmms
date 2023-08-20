@@ -1,8 +1,12 @@
+pub mod instrument;
+
 use std::io::{self, BufRead};
 
 use quick_xml::impl_deserialize_for_internally_tagged_enum;
 use serde::Deserialize;
 use thiserror::Error;
+
+use self::instrument::Instrument;
 
 #[derive(Debug, Error)]
 pub enum MmpReadError {
@@ -93,7 +97,19 @@ pub struct TrackSampleTrack {}
 pub struct TrackAutomationTrack {}
 
 #[derive(Debug, Deserialize)]
-pub struct InstrumentTrack {}
+pub struct InstrumentTrack {
+    #[serde(rename = "@vol")]
+    pub vol: f32,
+    #[serde(rename = "@pan")]
+    pub pan: f32,
+    #[serde(rename = "@firstkey")]
+    pub first_key: i32,
+    #[serde(rename = "@lastkey")]
+    pub last_key: i32,
+    #[serde(rename = "@basenote")]
+    pub base_note: i32,
+    pub instrument: Instrument,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct MidiClip {
